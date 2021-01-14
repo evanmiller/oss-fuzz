@@ -1,4 +1,4 @@
-# Copyright 2020 Google Inc.
+# Copyright 2021 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,9 +15,16 @@
 ################################################################################
 
 FROM gcr.io/oss-fuzz-base/base-builder
-RUN apt-get update && apt-get install -y make autoconf automake libtool wget gettext automake libxml2-dev m4 pkg-config bison flex
-RUN git clone --depth 1 https://github.com/dovecot/core dovecot
-WORKDIR dovecot
-COPY build.sh $SRC/
-#COPY fuzz-* $SRC/
 
+RUN git clone \
+	--depth 1 \
+	--branch master \
+	https://github.com/mozilla/bleach.git
+
+WORKDIR bleach
+
+RUN git clone --depth 1 https://github.com/google/fuzzing
+RUN cat fuzzing/dictionaries/html.dict > $OUT/linkify_fuzzer.dict
+RUN cat fuzzing/dictionaries/html.dict > $OUT/sanitize_fuzzer.dict
+
+COPY build.sh sanitize_fuzzer.py linkify_fuzzer.py $SRC/

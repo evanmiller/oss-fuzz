@@ -1,4 +1,6 @@
-# Copyright 2020 Google Inc.
+#!/usr/bin/python3
+
+# Copyright 2020 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,13 +13,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-################################################################################
 
-FROM gcr.io/oss-fuzz-base/base-builder
-RUN apt-get update && apt-get install -y make autoconf automake libtool wget gettext automake libxml2-dev m4 pkg-config bison flex
-RUN git clone --depth 1 https://github.com/dovecot/core dovecot
-WORKDIR dovecot
-COPY build.sh $SRC/
-#COPY fuzz-* $SRC/
+import sys
+import atheris
+import bleach
 
+
+def TestOneInput(input_bytes):
+  fdp = atheris.FuzzedDataProvider(input_bytes)
+  data = fdp.ConsumeUnicode(atheris.ALL_REMAINING)
+
+  bleach.linkify(data)
+
+
+def main():
+  atheris.Setup(sys.argv, TestOneInput, enable_python_coverage=True)
+  atheris.Fuzz()
+
+
+if __name__ == "__main__":
+  main()

@@ -1,3 +1,4 @@
+#!/bin/bash -eu
 # Copyright 2020 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +15,20 @@
 #
 ################################################################################
 
-FROM gcr.io/oss-fuzz-base/base-builder
-RUN apt-get update && apt-get install -y make autoconf automake libtool wget gettext automake libxml2-dev m4 pkg-config bison flex
-RUN git clone --depth 1 https://github.com/dovecot/core dovecot
-WORKDIR dovecot
-COPY build.sh $SRC/
-#COPY fuzz-* $SRC/
+# Build and install project (using current CFLAGS, CXXFLAGS).
+pip3 install .
 
+# Build fuzzers in $OUT.
+for fuzzer in $(find $SRC -name '*_fuzzer.py'); do
+  fuzzer_basename=$(basename -s .py $fuzzer)
+  fuzzer_package=${fuzzer_basename}.pkg
+  pyinstaller --distpath $OUT --onefile --name $fuzzer_package $fuzzer
+
+  # Create execution wrapper.
+  echo "#!/bin/sh
+# LLVMFuzzerTestOneInput for fuzzer detection.
+this_dir=\$(dirname \"\$0\")
+ASAN_OPTIONS=\$ASAN_OPTIONS:symbolize=1:external_symbolizer_path=\$this_dir/llvm-symbolizer:detect_leaks=0 \
+\$this_dir/$fuzzer_package \$@" > $OUT/$fuzzer_basename
+  chmod u+x $OUT/$fuzzer_basename
+done
